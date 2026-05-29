@@ -1,17 +1,13 @@
-/**
- * storage.js — Capa d'emmagatzematge persistent
- *
- * Utilitza @capacitor/preferences quan s'executa en dispositiu Android.
- * En navegador web fa servir localStorage com a fallback automàtic
- * (Capacitor ja ho gestiona internament, però afegim el try/catch
- * per robustesa en entorns sense Capacitor inicialitzat).
- */
+// storage.js - Gestio de l'emmagatzematge persistent
+//
+// Faig servir Capacitor Preferences quan corro en un dispositiu real.
+// Si falla (per exemple, al navegador web), cau a localStorage com a pla B.
 
 import { Preferences } from '@capacitor/preferences';
 
 const KEY = 'beatpulse_config';
 
-/** Configuració per defecte de l'app */
+// Valors que s'usen la primera vegada que s'obre l'app (sense config guardada)
 const DEFAULTS = {
   bpm:               120,
   mode:              'visual',
@@ -21,31 +17,24 @@ const DEFAULTS = {
   particleIntensity: 5,
 };
 
-/**
- * Desa la configuració de l'app.
- * @param {object} config — Objecte de configuració parcial o total
- */
+// Guarda la configuracio actual. Rep un objecte amb els camps que volem desar.
 export async function saveConfig(config) {
   const data = JSON.stringify(config);
   try {
     await Preferences.set({ key: KEY, value: data });
   } catch {
-    // Fallback: localStorage per entorn web sense Capacitor
+    // Si Capacitor no esta disponible, guardo a localStorage
     try { localStorage.setItem(KEY, data); } catch { /* silent */ }
   }
 }
 
-/**
- * Carrega la configuració desada.
- * Retorna els valors per defecte si no hi ha res desat.
- * @returns {Promise<object>}
- */
+// Carrega la configuracio guardada. Si no n'hi ha, retorna els valors per defecte.
 export async function loadConfig() {
   try {
     const { value } = await Preferences.get({ key: KEY });
     if (value) return { ...DEFAULTS, ...JSON.parse(value) };
   } catch {
-    // Fallback: localStorage
+    // Intento amb localStorage si Capacitor falla
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
@@ -54,9 +43,7 @@ export async function loadConfig() {
   return { ...DEFAULTS };
 }
 
-/**
- * Esborra tota la configuració desada (útil per depurar).
- */
+// Esborra la configuracio guardada. Util per fer proves.
 export async function clearConfig() {
   try {
     await Preferences.remove({ key: KEY });

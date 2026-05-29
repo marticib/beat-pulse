@@ -1,21 +1,11 @@
-/**
- * main.js — Controlador principal de BeatPulse
- *
- * Responsabilitats:
- *  - Càrrega i desat de configuració (storage.js)
- *  - Gestió del loop de beat amb precisió (Web Audio API clock)
- *  - Sincronització entre UI, sketch p5.js i funcionalitats natives
- *  - Panel de configuració ⚙️
- */
+// main.js - Controlador principal de BeatPulse
+// Aqui es gestiona tot: la UI, el ritme dels beats i les funcions natives.
 
-import { createSketch }                    from './sketch.js';
-import { loadConfig, saveConfig }          from './storage.js';
+import { createSketch }                        from './sketch.js';
+import { loadConfig, saveConfig }              from './storage.js';
 import { triggerVibration, triggerTorchFlash } from './native.js';
 
-// ============================================================
-// ESTAT DE L'APP
-// ============================================================
-
+// Dades principals de l'app, les guardo totes juntes per tenir-ho clar
 const app = {
   bpm:               120,
   mode:              'visual',   // visual | vibration | torch | all
@@ -27,46 +17,40 @@ const app = {
   sketch:            null,
 };
 
-// Web Audio context per al scheduler precís
+// Variables pel scheduler de beats (Web Audio API)
 let audioCtx        = null;
 let schedulerTimer  = null;
 let nextBeatTime    = 0;
-const LOOKAHEAD_MS  = 25;   // interval del scheduler en ms
-const SCHEDULE_AHEAD = 0.1; // finestra d'anticipació en segons
+const LOOKAHEAD_MS   = 25;   // cada quants ms comprovo si cal llançar un beat
+const SCHEDULE_AHEAD = 0.1;  // quants segons d'avantatge preparo
 
-// ============================================================
-// REFERÈNCIES DOM
-// ============================================================
-
+// Totes les referències als elements del DOM
 const dom = {
-  bpmNumber:        document.getElementById('bpm-number'),
-  bpmSlider:        document.getElementById('bpm-slider'),
-  bpmDown:          document.getElementById('bpm-down'),
-  bpmUp:            document.getElementById('bpm-up'),
-  startStopBtn:     document.getElementById('start-stop-btn'),
-  modeButtons:      document.querySelectorAll('.mode-btn'),
-  settingsBtn:      document.getElementById('settings-btn'),
-  settingsPanel:    document.getElementById('settings-panel'),
-  settingsClose:    document.getElementById('settings-close'),
-  settingsBpm:      document.getElementById('settings-bpm'),
-  visualModeSelect: document.getElementById('visual-mode-select'),
-  vibrationToggle:  document.getElementById('vibration-toggle'),
-  torchToggle:      document.getElementById('torch-toggle'),
-  particleIntensity:document.getElementById('particle-intensity'),
-  particleValue:    document.getElementById('particle-value'),
-  canvasContainer:  document.getElementById('canvas-container'),
+  bpmNumber:         document.getElementById('bpm-number'),
+  bpmSlider:         document.getElementById('bpm-slider'),
+  bpmDown:           document.getElementById('bpm-down'),
+  bpmUp:             document.getElementById('bpm-up'),
+  startStopBtn:      document.getElementById('start-stop-btn'),
+  modeButtons:       document.querySelectorAll('.mode-btn'),
+  settingsBtn:       document.getElementById('settings-btn'),
+  settingsPanel:     document.getElementById('settings-panel'),
+  settingsClose:     document.getElementById('settings-close'),
+  settingsBpm:       document.getElementById('settings-bpm'),
+  visualModeSelect:  document.getElementById('visual-mode-select'),
+  vibrationToggle:   document.getElementById('vibration-toggle'),
+  torchToggle:       document.getElementById('torch-toggle'),
+  particleIntensity: document.getElementById('particle-intensity'),
+  particleValue:     document.getElementById('particle-value'),
+  canvasContainer:   document.getElementById('canvas-container'),
 };
 
-// ============================================================
-// INICIALITZACIÓ
-// ============================================================
-
+// Punt d'entrada: carrega la config guardada i arrenca l'app
 async function init() {
-  // 1. Carregar configuració desada
   const config = await loadConfig();
   applyConfig(config);
 
-  // 2. Crear el sketch p5.js (ho diferim un frame per tenir layout calculat)
+  // Espero un frame per assegurar-me que el layout ja esta calculat
+  // abans de crear el canvas de p5.js
   requestAnimationFrame(() => {
     app.sketch = createSketch(dom.canvasContainer);
     app.sketch.setVisualMode(app.visualMode);
@@ -74,13 +58,11 @@ async function init() {
     app.sketch.setBpm(app.bpm);
   });
 
-  // 3. Connectar tots els events de la UI
   wireEvents();
-
-  // 4. Sincronitzar la UI amb l'estat carregat
   syncUI();
 }
 
+// Passa els valors de la config carregada a l'objecte app
 function applyConfig(config) {
   app.bpm               = clampBpm(config.bpm);
   app.mode              = config.mode;
@@ -90,15 +72,16 @@ function applyConfig(config) {
   app.particleIntensity = config.particleIntensity;
 }
 
+// Actualitza tots els elements visuals per reflectir l'estat actual
 function syncUI() {
-  dom.bpmNumber.textContent         = app.bpm;
-  dom.bpmSlider.value               = app.bpm;
-  dom.settingsBpm.value             = app.bpm;
-  dom.visualModeSelect.value        = app.visualMode;
-  dom.vibrationToggle.checked       = app.vibrationEnabled;
-  dom.torchToggle.checked           = app.torchEnabled;
-  dom.particleIntensity.value       = app.particleIntensity;
-  dom.particleValue.textContent     = app.particleIntensity;
+  dom.bpmNumber.textContent     = app.bpm;
+  dom.bpmSlider.value           = app.bpm;
+  dom.settingsBpm.value         = app.bpm;
+  dom.visualModeSelect.value    = app.visualMode;
+  dom.vibrationToggle.checked   = app.vibrationEnabled;
+  dom.torchToggle.checked       = app.torchEnabled;
+  dom.particleIntensity.value   = app.particleIntensity;
+  dom.particleValue.textContent = app.particleIntensity;
 
   dom.modeButtons.forEach(btn =>
     btn.classList.toggle('active', btn.dataset.mode === app.mode)
@@ -107,40 +90,33 @@ function syncUI() {
   document.documentElement.dataset.visualMode = app.visualMode;
 }
 
-// ============================================================
-// EVENT LISTENERS
-// ============================================================
-
+// Connecta tots els events de la interficie
 function wireEvents() {
-  // BPM: slider principal
   dom.bpmSlider.addEventListener('input', e => setBpm(parseInt(e.target.value)));
 
-  // BPM: botons +/-
   dom.bpmDown.addEventListener('click', () => setBpm(app.bpm - 1));
   dom.bpmUp.addEventListener('click',   () => setBpm(app.bpm + 1));
 
-  // BPM: input numèric al panell
+  // El camp numeric del panell de configuracio
   dom.settingsBpm.addEventListener('change', e => {
     const v = parseInt(e.target.value);
     if (!isNaN(v)) setBpm(v);
   });
 
-  // Botons de mode
   dom.modeButtons.forEach(btn =>
     btn.addEventListener('click', () => setMode(btn.dataset.mode))
   );
 
-  // Start / Stop
   dom.startStopBtn.addEventListener('click', toggleStartStop);
 
-  // Panell de configuració
+  // Obrir i tancar el panell de configuracio
   dom.settingsBtn.addEventListener('click', () => setSettingsOpen(true));
   dom.settingsClose.addEventListener('click', () => setSettingsOpen(false));
+  // Clicar fora del panell tambe el tanca
   dom.settingsPanel.addEventListener('click', e => {
     if (e.target === dom.settingsPanel) setSettingsOpen(false);
   });
 
-  // Mode visual
   dom.visualModeSelect.addEventListener('change', e => {
     app.visualMode = e.target.value;
     document.documentElement.dataset.visualMode = app.visualMode;
@@ -148,21 +124,18 @@ function wireEvents() {
     saveCurrentConfig();
   });
 
-  // Vibració
   dom.vibrationToggle.addEventListener('change', e => {
     app.vibrationEnabled = e.target.checked;
     updateModeFromToggles();
     saveCurrentConfig();
   });
 
-  // Llanterna
   dom.torchToggle.addEventListener('change', e => {
     app.torchEnabled = e.target.checked;
     updateModeFromToggles();
     saveCurrentConfig();
   });
 
-  // Intensitat de partícules
   dom.particleIntensity.addEventListener('input', e => {
     app.particleIntensity = parseInt(e.target.value);
     dom.particleValue.textContent = app.particleIntensity;
@@ -171,10 +144,7 @@ function wireEvents() {
   });
 }
 
-// ============================================================
-// LÒGICA DE CONTROLS
-// ============================================================
-
+// Canvia el BPM i reinicia el scheduler si l'app esta en marxa
 function setBpm(value) {
   app.bpm = clampBpm(value);
   dom.bpmNumber.textContent = app.bpm;
@@ -182,7 +152,6 @@ function setBpm(value) {
   dom.settingsBpm.value     = app.bpm;
   app.sketch?.setBpm(app.bpm);
 
-  // Si el metrònomo corre, reinicia el scheduler amb el nou tempo
   if (app.isRunning) {
     stopScheduler();
     startScheduler();
@@ -190,6 +159,7 @@ function setBpm(value) {
   saveCurrentConfig();
 }
 
+// Canvia el mode i actualitza els toggles del panell perque estiguin sincronitzats
 function setMode(mode) {
   app.mode = mode;
 
@@ -220,7 +190,7 @@ function setMode(mode) {
   saveCurrentConfig();
 }
 
-/** Sincronitza el mode quan l'usuari canvia els toggles manualment */
+// Si l'usuari canvia els toggles manualment, actualitzo el mode
 function updateModeFromToggles() {
   if (app.vibrationEnabled && app.torchEnabled) {
     app.mode = 'all';
@@ -245,7 +215,8 @@ function toggleStartStop() {
 }
 
 function startApp() {
-  // AudioContext ha d'iniciar-se dins d'un gest d'usuari (requisit dels navegadors)
+  // L'AudioContext nomes es pot crear despres d'un gest de l'usuari,
+  // per aixo l'inicialitzo aqui i no a dalt de tot
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
@@ -266,12 +237,8 @@ function stopApp() {
   stopScheduler();
 }
 
-// ============================================================
-// SCHEDULER PRECÍS (Web Audio Clock + setTimeout lookahead)
-// ============================================================
-// Aquesta tècnica (Chris Wilson, 2013) combina la precisió del clock
-// d'àudio amb la flexibilitat de setTimeout per evitar jitter.
-
+// Scheduler de beats amb el clock de la Web Audio API
+// Funciona millor que setInterval sol perque el clock d'audio no te jitter
 function startScheduler() {
   nextBeatTime   = audioCtx.currentTime;
   schedulerTimer = setInterval(tickScheduler, LOOKAHEAD_MS);
@@ -282,8 +249,9 @@ function stopScheduler() {
   schedulerTimer = null;
 }
 
+// S'executa cada 25ms i programa els beats que toquen dins de la finestra d'avantatge
 function tickScheduler() {
-  const interval = 60 / app.bpm; // temps en segons entre beats
+  const interval = 60 / app.bpm;
   while (nextBeatTime < audioCtx.currentTime + SCHEDULE_AHEAD) {
     scheduleOneBeat(nextBeatTime);
     nextBeatTime += interval;
@@ -295,40 +263,29 @@ function scheduleOneBeat(beatTime) {
   setTimeout(onBeat, delayMs);
 }
 
-/** S'executa a cada beat amb precisió de clock d'àudio */
+// Aixo s'executa a cada beat: activa el canvas, la vibracio i la llanterna
 function onBeat() {
   if (!app.isRunning) return;
 
-  // Visual
   app.sketch?.triggerBeat();
-
-  // Flash visual al número BPM
   flashBpmNumber();
 
-  // Natives
   if (app.vibrationEnabled) triggerVibration();
   if (app.torchEnabled)     triggerTorchFlash(140);
 }
 
+// Afegeix la classe d'animacio CSS al numero de BPM a cada beat
 function flashBpmNumber() {
   dom.bpmNumber.classList.remove('bpm-number--running');
-  // Forçar reflow per reiniciar l'animació CSS
-  void dom.bpmNumber.offsetWidth;
+  void dom.bpmNumber.offsetWidth; // truc per forcar el reflow i reiniciar l'animacio
   dom.bpmNumber.classList.add('bpm-number--running');
 }
-
-// ============================================================
-// PANELL DE CONFIGURACIÓ
-// ============================================================
 
 function setSettingsOpen(open) {
   dom.settingsPanel.classList.toggle('hidden', !open);
 }
 
-// ============================================================
-// DESAT DE CONFIGURACIÓ
-// ============================================================
-
+// Guarda l'estat actual a Capacitor Preferences (o localStorage si no hi ha Capacitor)
 function saveCurrentConfig() {
   saveConfig({
     bpm:               app.bpm,
@@ -340,16 +297,9 @@ function saveCurrentConfig() {
   });
 }
 
-// ============================================================
-// UTILITATS
-// ============================================================
-
+// Assegura que el BPM sempre quedi entre 40 i 240
 function clampBpm(v) {
   return Math.max(40, Math.min(240, Math.round(v) || 120));
 }
-
-// ============================================================
-// ARRENCADA
-// ============================================================
 
 init();

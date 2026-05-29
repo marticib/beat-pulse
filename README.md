@@ -4,15 +4,49 @@ App musical interactiva que genera pulsacions visuals, vibració i llanternes en
 
 ---
 
+## Adaptació del tutorial base
+
+Aquesta app parteix del tutorial **Pomodoro Timer amb Capacitor + p5.js + ViteJS** i el transforma en una aplicació musical interactiva. A continuació es detallen les decisions de canvi respecte al tutorial original.
+
+### Punt de partida comú
+
+El tutorial estableix la base tècnica que BeatPulse hereta sense canvis:
+
+- Projecte creat amb `npm create vite@latest` (template vanilla)
+- Capacitor inicialitzat amb `npx cap init` i afegit Android amb `npx cap add android`
+- p5.js en **mode instància** (`new p5((p) => {...})`) per evitar contaminar el scope global
+- Vibració nativa amb `@capacitor/haptics` i `Haptics.impact()`
+- Flux de treball idèntic: `npm run build` → `npx cap sync` → `npx cap open android`
+
+### Canvis i extensions respecte al tutorial
+
+| Aspecte | Tutorial Pomodoro | BeatPulse |
+|---|---|---|
+| **Importació p5.js** | Fitxer copiat a `/public`, carregat com a `<script>` global | Importat via npm (`import p5 from 'p5'`), més net i versionat |
+| **Arquitectura del sketch** | Una instància exportada directament | Funció `createSketch()` que retorna una API (`triggerBeat`, `setVisualMode`...) per desacoblar canvas i lògica |
+| **On es crida Haptics** | Dins `p.mousePressed` al sketch | Centralitzat a `native.js`, cridat des del scheduler |
+| **Temporitzador** | Interval fix del Pomodoro (25 min) | Scheduler de beats amb Web Audio API clock per precisió musical |
+| **Emmagatzematge** | No n'hi ha | `storage.js` amb Capacitor Preferences + fallback localStorage |
+| **Llanterna** | No contemplada | `triggerTorchFlash()` a `native.js`, amb stub documentat |
+| **Visuals del canvas** | Text estàtic "Pomodoro" | Cercle pulsant + partícules generatives + ones expansives, 3 modes de color |
+| **Interfície** | Mínima | BPM slider, botons de mode, panell de configuració persistent |
+| **Plataforma** | Android | Android + iOS (`@capacitor/ios`) |
+
+### Per què p5.js via npm i no via `/public`?
+
+El tutorial proposa copiar `p5.js` a la carpeta `/public` per evitar problemes amb `p5.sound`. Com que BeatPulse no necessita `p5.sound` (el so és vibració hàptica, no àudio), es pot importar p5 directament com a paquet npm. Això permet que Vite el gestioni com la resta de dependències i evita tenir fitxers de libreria al repositori.
+
+---
+
 ## Descripció
 
 BeatPulse és un metrònomo visual i hàptic. L'usuari introdueix un BPM i l'app dispara, a cada beat:
 
 - Una **animació generativa** al canvas (p5.js): cercle pulsant, partícules i ones expansives.
 - **Vibració** del dispositiu (@capacitor/haptics).
-- **Flash de llanterna** (@capacitor-community/torch).
+- **Flash de llanterna** (codi preparat a `native.js`, plugin pendent d'integrar).
 
-Té tres modes visuals (**Neon**, **Foc**, **Minimal**), un panel de configuració ⚙️ i desa automàticament totes les preferències amb Capacitor Preferences.
+Té tres modes visuals (**Neon**, **Foc**, **Minimal**), un panell de configuració i desa automàticament totes les preferències amb Capacitor Preferences.
 
 ---
 
@@ -48,7 +82,8 @@ Té tres modes visuals (**Neon**, **Foc**, **Minimal**), un panel de configuraci
 |---|---|
 | `@capacitor/haptics` | Vibració curta a cada beat |
 | `@capacitor/preferences` | Desar/carregar configuració de l'usuari |
-| `@capacitor-community/torch` | Llanterna (codi preparat; veure instruccions) |
+| `@capacitor/ios` | Empaquetament per a iPhone |
+| Plugin de llanterna | Codi preparat a `native.js`; pendent d'integrar un plugin compatible |
 
 ---
 
@@ -133,11 +168,11 @@ Un cop obert Xcode:
 
 ## Activar la llanterna (opcional)
 
-El codi de la llanterna està preparat però comentat (per evitar errors de compilació si el plugin no s'ha sincronitzat). Per activar-la:
+El codi de la llanterna està preparat però comentat a `src/native.js`. Per activar-la quan es disposi d'un plugin compatible:
 
-1. Instal·la el plugin:
+1. Instal·la el plugin triat (exemple):
    ```bash
-   npm install
+   npm install <nom-del-plugin>
    npx cap sync android
    ```
 
@@ -146,7 +181,7 @@ El codi de la llanterna està preparat però comentat (per evitar errors de comp
    <uses-permission android:name="android.permission.FLASHLIGHT"/>
    ```
 
-3. A `src/native.js`, descomenta la línia de l'import i el bloc de codi marcats com `TORCH PLUGIN INTEGRATION`.
+3. A `src/native.js`, descomenta l'`import` i el bloc de codi marcat amb el comentari `Quan el plugin estigui instal·lat`.
 
 ---
 

@@ -1,18 +1,17 @@
-/**
- * sketch.js — Visualitzador generatiu p5.js per a BeatPulse
- *
- * Exporta createSketch(container) que retorna una API pública:
- *   triggerBeat()          — activa una pulsació visual
- *   setVisualMode(mode)    — 'neon' | 'fire' | 'minimal'
- *   setActive(bool)        — indica si el metrònomo està en marxa
- *   setBpm(value)          — per adaptar velocitats si cal
- *   setParticleIntensity() — nombre de partícules per beat
- *   destroy()              — elimina la instància p5
- */
+// sketch.js - Tot el que es veu al canvas: cercle central, ones i particules
+// Faig servir p5.js en mode instancia per no contaminar el scope global.
+//
+// Des de main.js es pot cridar:
+//   triggerBeat()          - dispara una pulsacio visual
+//   setVisualMode(mode)    - canvia el tema: 'neon', 'fire' o 'minimal'
+//   setActive(bool)        - indica si el metronom esta en marxa
+//   setBpm(value)          - actualitza el BPM intern
+//   setParticleIntensity() - quantes particules surten per beat
+//   destroy()              - elimina la instancia de p5
 
 import p5 from 'p5';
 
-// Paletes de color per a cada mode visual (HSB: matís, sat, brill)
+// Colors de cada mode en format HSB (matís, saturació, brillantor)
 const THEMES = {
   neon:    { h: 285, s: 90, b: 100, h2: 195, name: 'neon' },
   fire:    { h: 20,  s: 95, b: 100, h2: 45,  name: 'fire' },
@@ -20,7 +19,7 @@ const THEMES = {
 };
 
 export function createSketch(container) {
-  // Estat compartit entre la funció i l'API retornada
+  // Estat intern que comparteixo entre el sketch i l'API publica
   const state = {
     beatTriggered:     false,
     visualMode:        'neon',
@@ -31,14 +30,13 @@ export function createSketch(container) {
     beatCount:         0,
   };
 
-  // Llistes de partícules i ones actives
   const particles = [];
   const waves     = [];
 
   const sketch = (p) => {
 
-    // ---- Setup ----
     p.setup = () => {
+      // Faig servir les dimensions del contenidor, amb fallback per si no esta renderitzat
       const w = container.offsetWidth  || window.innerWidth;
       const h = container.offsetHeight || Math.floor(window.innerHeight * 0.45);
       const cnv = p.createCanvas(w, h);
@@ -47,16 +45,15 @@ export function createSketch(container) {
       p.noStroke();
     };
 
-    // ---- Draw (loop principal) ----
     p.draw = () => {
       const theme = THEMES[state.visualMode] || THEMES.neon;
       const cx    = p.width  / 2;
       const cy    = p.height / 2;
 
-      // Fons semitransparent per crear l'efecte de rastre
+      // Fons semitransparent: aixi el fons no s'esborra del tot i crea rastre
       p.background(0, 0, 5, state.isActive ? 22 : 40);
 
-      // Processar el beat si s'ha activat des de main.js
+      // Quan arriba un beat des de main.js, disparo tot
       if (state.beatTriggered) {
         state.beatTriggered = false;
         state.beatCount++;
@@ -65,27 +62,20 @@ export function createSketch(container) {
         spawnWave(cx, cy);
       }
 
-      // Suavitzar el retorn a escala 1
+      // El cercle torna a la mida normal suaument amb lerp
       state.pulseScale = p.lerp(state.pulseScale, 1.0, 0.13);
 
-      // Dibuixar ones expansives
       drawWaves(p, theme);
-
-      // Dibuixar partícules
       drawParticles(p, theme);
-
-      // Dibuixar el cercle central
       drawCenter(p, cx, cy, theme);
     };
 
-    // Redimensionar canvas quan canvia la mida de la finestra
     p.windowResized = () => {
       const w = container.offsetWidth  || window.innerWidth;
       const h = container.offsetHeight || Math.floor(window.innerHeight * 0.45);
       p.resizeCanvas(w, h);
     };
 
-    // ---- Ones circulars ----
     function spawnWave(cx, cy) {
       waves.push({ x: cx, y: cy, radius: 8, life: 100 });
     }
@@ -93,6 +83,7 @@ export function createSketch(container) {
     function drawWaves(p, theme) {
       for (let i = waves.length - 1; i >= 0; i--) {
         const w = waves[i];
+        // En mode minimal les ones s'expandeixen i desapareixen mes lentament
         w.radius += state.visualMode === 'minimal' ? 3 : 4.5;
         w.life   -= state.visualMode === 'minimal' ? 1.5 : 2;
 
@@ -107,18 +98,18 @@ export function createSketch(container) {
       }
     }
 
-    // ---- Partícules ----
     function spawnParticles(p, cx, cy, theme) {
       const count = state.particleIntensity * 3;
 
       for (let i = 0; i < count; i++) {
         const angle = p.random(p.TWO_PI);
+        // El foc va una mica mes lent per semblar mes pesant
         const speed = state.visualMode === 'fire'
-          ? p.random(1.5, 5)    // el foc puja més lentament
+          ? p.random(1.5, 5)
           : p.random(2.5, 9);
 
-        // Direcció: el foc tendeix a pujar
         const vx = p.cos(angle) * speed;
+        // En mode foc resto velocitat vertical perque les particules pugin
         const vy = state.visualMode === 'fire'
           ? p.sin(angle) * speed - p.random(1, 3)
           : p.sin(angle) * speed;
@@ -128,9 +119,9 @@ export function createSketch(container) {
           y:    cy,
           vx,
           vy,
-          size: p.random(3, 9),
-          life: 255,
-          hOff: p.random(-40, 40),
+          size:  p.random(3, 9),
+          life:  255,
+          hOff:  p.random(-40, 40), // petit desfasament de color per variacio
           decay: state.visualMode === 'minimal' ? 5 : p.random(2.5, 5),
         });
       }
@@ -142,7 +133,7 @@ export function createSketch(container) {
 
         pt.x    += pt.vx;
         pt.y    += pt.vy;
-        pt.vx   *= 0.955;
+        pt.vx   *= 0.955; // frenada progressiva
         pt.vy   *= 0.955;
         pt.life -= pt.decay;
         pt.size *= 0.975;
@@ -153,7 +144,7 @@ export function createSketch(container) {
         const hue   = (theme.h + pt.hOff + 360) % 360;
 
         if (state.visualMode === 'fire') {
-          // Degradat càlid: taronja → groc
+          // Interpolo entre taronja i groc a mesura que la particula es mor
           const t = p.map(pt.life, 0, 255, 0, 1);
           p.fill(p.lerp(theme.h2, theme.h, t), theme.s, theme.b, alpha);
         } else {
@@ -164,26 +155,24 @@ export function createSketch(container) {
       }
     }
 
-    // ---- Cercle central ----
     function drawCenter(p, cx, cy, theme) {
       const base = p.min(p.width, p.height) * 0.21;
       const sz   = base * state.pulseScale;
       const act  = state.isActive;
 
       if (state.visualMode === 'minimal') {
-        // Mode minimal: contorn simple, sense glow
+        // En minimal nomes dibuixo el contorn, sense glow
         p.noFill();
         p.stroke(theme.h, theme.s, theme.b, act ? 80 : 28);
         p.strokeWeight(2);
         p.ellipse(cx, cy, sz);
         p.noStroke();
-        // Punt central
         p.fill(theme.h, theme.s, theme.b, act ? 55 : 18);
         p.ellipse(cx, cy, sz * 0.18);
         return;
       }
 
-      // Capes de glow exterior
+      // Capes concentriques per simular el glow
       const glowLayers = 5;
       for (let i = glowLayers; i > 0; i--) {
         const alpha = act ? i * 9 : i * 3;
@@ -191,24 +180,24 @@ export function createSketch(container) {
         p.ellipse(cx, cy, sz + i * 20);
       }
 
-      // Nucli del cercle
+      // Cercle principal
       p.fill(theme.h, theme.s - 10, theme.b - 5, act ? 70 : 22);
       p.ellipse(cx, cy, sz);
 
-      // Brillantor interior
+      // Brillantor interior d'un color lleugerament diferent
       p.fill(theme.h2, theme.s - 25, 100, act ? 52 : 14);
       p.ellipse(cx, cy, sz * 0.48);
 
-      // Punt central brillant
+      // Punt blanc al centre
       p.fill(0, 0, 100, act ? 60 : 20);
       p.ellipse(cx, cy, sz * 0.12);
     }
   };
 
-  // Crear la instància p5 (mode instància, sense contaminar el namespace global)
+  // Creo la instancia en mode instancia (la fungo com a argument, no s'executa globalment)
   const p5Instance = new p5(sketch);
 
-  // ---- API pública ----
+  // API publica que exposo a main.js
   return {
     triggerBeat() {
       state.beatTriggered = true;
@@ -219,7 +208,7 @@ export function createSketch(container) {
     setActive(active) {
       state.isActive = active;
       if (!active) {
-        // Buidar les llistes en aturar per netejar el canvas
+        // Netejo tot quan s'atura perque el canvas quedi net
         particles.length = 0;
         waves.length     = 0;
         state.pulseScale = 1.0;
