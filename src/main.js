@@ -3,7 +3,7 @@
 
 import { createSketch }                        from './sketch.js';
 import { loadConfig, saveConfig }              from './storage.js';
-import { triggerVibration, triggerTorchFlash } from './native.js';
+import { triggerVibration, triggerTorchFlash, releaseTorch } from './native.js';
 
 // Dades principals de l'app, les guardo totes juntes per tenir-ho clar
 const app = {
@@ -235,6 +235,7 @@ function stopApp() {
   dom.startStopBtn.classList.remove('running');
   app.sketch?.setActive(false);
   stopScheduler();
+  releaseTorch();
 }
 
 // Scheduler de beats amb el clock de la Web Audio API

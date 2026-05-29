@@ -1,13 +1,18 @@
 // native.js - Funcions per accedir al hardware del dispositiu
 //
-// Vibració: faig servir @capacitor/haptics, que ja esta instal·lat.
-// Llanterna: el codi esta preparat pero comentat perque no he trobat
-//            un plugin de Capacitor prou estable per incloure'l per defecte.
-//            Quan en tingui un, nomes cal descomentar les linies marcades.
+// Vibració: @capacitor/haptics, ja instal·lat.
+// Llanterna: faig servir l'API estandard MediaDevices.getUserMedia() amb
+//            la constraint { torch: true }. Funciona al WebView d'Android
+//            sense necessitat de cap plugin extern. A iOS esta limitada
+//            per Apple i pot no funcionar.
 
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
-// Fa vibrar el dispositiu un moment. En el navegador fa servir navigator.vibrate() com a alternativa.
+// ---------------------------------------------------------------------------
+// VIBRACIÓ
+// ---------------------------------------------------------------------------
+
+// Fa vibrar el dispositiu un moment. En el navegador fa servir navigator.vibrate().
 export async function triggerVibration() {
   try {
     await Haptics.impact({ style: ImpactStyle.Medium });
@@ -18,29 +23,76 @@ export async function triggerVibration() {
   }
 }
 
-// Fa un flash de llanterna de la durada indicada (en ms).
-//
-// Per activar-ho amb un plugin real cal:
-//   1. Trobar un plugin de Capacitor per a la llanterna i instal·lar-lo
-//      (per exemple: npm install @capawesome/capacitor-flashlight)
-//   2. Fer npx cap sync android (o ios)
-//   3. A android/app/src/main/AndroidManifest.xml afegir:
-//         <uses-permission android:name="android.permission.FLASHLIGHT"/>
-//   4. Descomentar l'import de sota i el cos de la funcio
-//
-// import { Flashlight } from '@capawesome/capacitor-flashlight';
+// ---------------------------------------------------------------------------
+// LLANTERNA via MediaDevices API
+// ---------------------------------------------------------------------------
+// Guardo el track de la camera obert per no obrir-ne un de nou a cada beat.
+// Aixi evito el retard i el consum de reiniciar la camera continuament.
 
+let torchTrack  = null;
+let torchStream = null;
+let flashTimer  = null;
+
+// Demana acces a la camera trasera i comprova si te suport de torxa.
+// Retorna el track si esta disponible, o null si no.
+async function getTorchTrack() {
+  if (torchTrack) return torchTrack;
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment' },
+  });
+
+  const track = stream.getVideoTracks()[0];
+  const caps  = track.getCapabilities?.() ?? {};
+
+  if (!caps.torch) {
+    // El dispositiu no suporta torch per aquesta via
+    stream.getTracks().forEach(t => t.stop());
+    return null;
+  }
+
+  torchStream = stream;
+  torchTrack  = track;
+  return track;
+}
+
+// Encen la llanterna durant durationMs i l'apaga.
+// La primera crida demana permis de camera al dispositiu.
 export async function triggerTorchFlash(durationMs = 150) {
-  // Quan el plugin estigui instal·lat, substituir per:
-  //
-  // try {
-  //   await Flashlight.enable();
-  //   setTimeout(async () => {
-  //     try { await Flashlight.disable(); } catch { /* silent */ }
-  //   }, durationMs);
-  // } catch (err) {
-  //   console.warn('Llanterna no disponible:', err.message);
-  // }
+  try {
+    const track = await getTorchTrack();
+    if (!track) return;
 
-  console.debug(`[BeatPulse] Torch flash ${durationMs}ms (plugin pendent d'integrar)`);
+    // Cancel·lo el timer anterior per si el beat anterior no havia acabat
+    clearTimeout(flashTimer);
+
+    await track.applyConstraints({ advanced: [{ torch: true }] });
+
+    flashTimer = setTimeout(async () => {
+      try {
+        await track.applyConstraints({ advanced: [{ torch: false }] });
+      } catch { /* silent */ }
+    }, durationMs);
+
+  } catch (err) {
+    console.warn('[BeatPulse] Llanterna no disponible:', err.message);
+    // Resetejo l'estat per intentar-ho de nou la propera vegada
+    torchTrack  = null;
+    torchStream = null;
+  }
+}
+
+// Allibera la camera quan l'app s'atura.
+// Cal cridar-ho des de main.js al fer Stop.
+export function releaseTorch() {
+  clearTimeout(flashTimer);
+  if (torchTrack) {
+    try { torchTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch {}
+  }
+  if (torchStream) {
+    torchStream.getTracks().forEach(t => t.stop());
+  }
+  torchTrack  = null;
+  torchStream = null;
+  flashTimer  = null;
 }
