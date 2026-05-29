@@ -1,0 +1,23 @@
+{
+  "name": "beatpulse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App musical de pulsacions visuals, vibració i llanterna",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0",
+    "p5": "^1.9.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "vite": "^5.2.0"
+  }
+}

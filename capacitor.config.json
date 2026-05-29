@@ -1,0 +1,12 @@
+{
+  "appId": "com.beatpulse.app",
+  "appName": "BeatPulse",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "Haptics": {},
+    "Preferences": {}
+  }
+}
