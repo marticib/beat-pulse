@@ -5,7 +5,8 @@
 
 import { Preferences } from '@capacitor/preferences';
 
-const KEY = 'beatpulse_config';
+const CONFIG_KEY = 'beatpulse_config';
+const ARTIST_KEY = 'beatpulse_artist';
 
 // Valors que s'usen la primera vegada que s'obre l'app (sense config guardada)
 const DEFAULTS = {
@@ -21,33 +22,55 @@ const DEFAULTS = {
 export async function saveConfig(config) {
   const data = JSON.stringify(config);
   try {
-    await Preferences.set({ key: KEY, value: data });
+    await Preferences.set({ key: CONFIG_KEY, value: data });
   } catch {
-    // Si Capacitor no esta disponible, guardo a localStorage
-    try { localStorage.setItem(KEY, data); } catch { /* silent */ }
+    try { localStorage.setItem(CONFIG_KEY, data); } catch { /* silent */ }
   }
 }
 
 // Carrega la configuracio guardada. Si no n'hi ha, retorna els valors per defecte.
 export async function loadConfig() {
   try {
-    const { value } = await Preferences.get({ key: KEY });
+    const { value } = await Preferences.get({ key: CONFIG_KEY });
     if (value) return { ...DEFAULTS, ...JSON.parse(value) };
   } catch {
-    // Intento amb localStorage si Capacitor falla
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(CONFIG_KEY);
       if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
     } catch { /* silent */ }
   }
   return { ...DEFAULTS };
 }
 
+// Guarda les dades de l'ultim artista consultat per recuperar-les en obrir l'app.
+export async function saveArtist(artistData) {
+  const data = JSON.stringify(artistData);
+  try {
+    await Preferences.set({ key: ARTIST_KEY, value: data });
+  } catch {
+    try { localStorage.setItem(ARTIST_KEY, data); } catch { /* silent */ }
+  }
+}
+
+// Carrega l'ultim artista consultat. Retorna null si no n'hi ha cap.
+export async function loadArtist() {
+  try {
+    const { value } = await Preferences.get({ key: ARTIST_KEY });
+    if (value) return JSON.parse(value);
+  } catch {
+    try {
+      const raw = localStorage.getItem(ARTIST_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch { /* silent */ }
+  }
+  return null;
+}
+
 // Esborra la configuracio guardada. Util per fer proves.
 export async function clearConfig() {
   try {
-    await Preferences.remove({ key: KEY });
+    await Preferences.remove({ key: CONFIG_KEY });
   } catch {
-    try { localStorage.removeItem(KEY); } catch { /* silent */ }
+    try { localStorage.removeItem(CONFIG_KEY); } catch { /* silent */ }
   }
 }

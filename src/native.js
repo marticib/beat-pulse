@@ -1,98 +1,71 @@
 // native.js - Funcions per accedir al hardware del dispositiu
 //
-// Vibració: @capacitor/haptics, ja instal·lat.
-// Llanterna: faig servir l'API estandard MediaDevices.getUserMedia() amb
-//            la constraint { torch: true }. Funciona al WebView d'Android
-//            sense necessitat de cap plugin extern. A iOS esta limitada
-//            per Apple i pot no funcionar.
+// Vibració: @capacitor/haptics
+// Llanterna: @capgo/capacitor-flash (crida nativa Android/iOS via CameraManager)
 
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { CapacitorFlash }       from '@capgo/capacitor-flash';
 
 // ---------------------------------------------------------------------------
 // VIBRACIÓ
 // ---------------------------------------------------------------------------
 
-// Fa vibrar el dispositiu un moment. En el navegador fa servir navigator.vibrate().
 export async function triggerVibration() {
   try {
     await Haptics.impact({ style: ImpactStyle.Medium });
-  } catch {
+    console.log('[Vibració] Haptics.impact OK');
+  } catch (err) {
+    console.warn('[Vibració] Haptics falla, fallback navigator.vibrate:', err.message);
     if ('vibrate' in navigator) {
       navigator.vibrate(60);
+      console.log('[Vibració] navigator.vibrate(60) cridat');
+    } else {
+      console.warn('[Vibració] navigator.vibrate no disponible');
     }
   }
 }
 
 // ---------------------------------------------------------------------------
-// LLANTERNA via MediaDevices API
+// LLANTERNA via @capgo/capacitor-flash
 // ---------------------------------------------------------------------------
-// Guardo el track de la camera obert per no obrir-ne un de nou a cada beat.
-// Aixi evito el retard i el consum de reiniciar la camera continuament.
 
-let torchTrack  = null;
-let torchStream = null;
-let flashTimer  = null;
+let flashTimer    = null;
+let torchChecked  = false;
+let torchOk       = false;
 
-// Demana acces a la camera trasera i comprova si te suport de torxa.
-// Retorna el track si esta disponible, o null si no.
-async function getTorchTrack() {
-  if (torchTrack) return torchTrack;
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment' },
-  });
-
-  const track = stream.getVideoTracks()[0];
-  const caps  = track.getCapabilities?.() ?? {};
-
-  if (!caps.torch) {
-    // El dispositiu no suporta torch per aquesta via
-    stream.getTracks().forEach(t => t.stop());
-    return null;
+async function ensureTorchAvailable() {
+  if (torchChecked) return torchOk;
+  torchChecked = true;
+  try {
+    const { value } = await CapacitorFlash.isAvailable();
+    torchOk = value;
+    console.log(torchOk ? '[Llanterna] disponible OK' : '[Llanterna] no disponible en aquest dispositiu');
+  } catch (err) {
+    torchOk = false;
+    console.warn('[Llanterna] error comprovant disponibilitat:', err.message);
   }
-
-  torchStream = stream;
-  torchTrack  = track;
-  return track;
+  return torchOk;
 }
 
-// Encen la llanterna durant durationMs i l'apaga.
-// La primera crida demana permis de camera al dispositiu.
 export async function triggerTorchFlash(durationMs = 150) {
+  if (!(await ensureTorchAvailable())) return;
+
   try {
-    const track = await getTorchTrack();
-    if (!track) return;
-
-    // Cancel·lo el timer anterior per si el beat anterior no havia acabat
     clearTimeout(flashTimer);
-
-    await track.applyConstraints({ advanced: [{ torch: true }] });
+    await CapacitorFlash.switchOn({ intensity: 1.0 });
+    console.log(`[Llanterna] ON → OFF en ${durationMs}ms`);
 
     flashTimer = setTimeout(async () => {
-      try {
-        await track.applyConstraints({ advanced: [{ torch: false }] });
-      } catch { /* silent */ }
+      try { await CapacitorFlash.switchOff(); } catch { /* silent */ }
     }, durationMs);
 
   } catch (err) {
-    console.warn('[BeatPulse] Llanterna no disponible:', err.message);
-    // Resetejo l'estat per intentar-ho de nou la propera vegada
-    torchTrack  = null;
-    torchStream = null;
+    console.warn('[Llanterna] error:', err.message);
   }
 }
 
-// Allibera la camera quan l'app s'atura.
-// Cal cridar-ho des de main.js al fer Stop.
-export function releaseTorch() {
+export async function releaseTorch() {
   clearTimeout(flashTimer);
-  if (torchTrack) {
-    try { torchTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch {}
-  }
-  if (torchStream) {
-    torchStream.getTracks().forEach(t => t.stop());
-  }
-  torchTrack  = null;
-  torchStream = null;
-  flashTimer  = null;
+  flashTimer = null;
+  try { await CapacitorFlash.switchOff(); } catch { /* silent */ }
 }

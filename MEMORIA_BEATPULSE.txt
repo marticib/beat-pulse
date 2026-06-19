@@ -1,0 +1,463 @@
+================================================================================
+  BEATPULSE — MEMÒRIA DE PRÀCTICA PR1
+  Desenvolupament d'Aplicacions Interactives
+  Universitat Oberta de Catalunya (UOC)
+  Autor: Marti
+  Data: Juny 2026
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+1. IDEACIÓ INICIAL DE LA NOVA APP
+────────────────────────────────────────────────────────────────────────────────
+
+La idea de BeatPulse sorgeix de la voluntat de combinar música i visualització
+en temps real en un dispositiu mòbil. L'objectiu inicial era crear una
+aplicació que respongués visualment al ritme d'una cançó, aprofitant el
+hardware del dispositiu (vibració i llanterna) per crear una experiència
+immersiva.
+
+Concepte original:
+  - L'usuari cerca un artista musical.
+  - L'app recupera informació de l'artista i les seves cançons.
+  - En seleccionar una cançó, s'analitza automàticament el seu ritme (BPM).
+  - Un visualitzador de partícules reacciona a cada beat de la música.
+  - El mòbil vibra i la llanterna s'activa sincronitzadament amb el beat.
+
+Modes visuals imaginats des del principi:
+  - Neon: partícules lluminoses i efectes de resplendor elèctric.
+  - Fire: partícules de foc, colors càlids i moviment ascendent.
+  - Minimal: cercles concèntrics i geometria simple, elegant.
+
+El mode visual s'associa automàticament al gènere musical de l'artista
+(ex: rock → Fire, electrònica → Neon, jazz → Minimal).
+
+Arquitectura decidida:
+  - Aplicació web empaquetada com a app nativa amb Capacitor 6.
+  - Interfície en 3 pantalles: Cerca → Artista → Visualitzador.
+  - Stack: ViteJS 5 + Vanilla JS (ES modules) + p5.js per al canvas.
+  - APIs externes: TheAudioDB (metadades artista) + iTunes Search (previews).
+  - Cap framework UI: CSS pur amb variables per als temes de color.
+
+[ ESPAI PER A ESBOSSOS INICIALS / WIREFRAMES ]
+
+  ┌───────────────────────┐
+  │                       │
+  │  (inserir captures)   │
+  │                       │
+  └───────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+2. CONSULTES I PASSOS SEGUITS A LA DOCUMENTACIÓ DE CAPACITOR
+────────────────────────────────────────────────────────────────────────────────
+
+Capacitor és el pont entre la webapp i les APIs natives d'Android i iOS.
+El procés de consulta i configuració va seguir aquest ordre:
+
+2.1 Instal·lació i configuració inicial
+  - Consulta: https://capacitorjs.com/docs/getting-started
+  - Passos seguits:
+      npm install @capacitor/core @capacitor/cli
+      npm install @capacitor/android @capacitor/ios
+      npx cap init BeatPulse com.beatpulse.app
+      npx cap add android
+      npx cap add ios
+  - Configuració del fitxer capacitor.config.json:
+      webDir: "dist" (output de Vite)
+      androidScheme: "https" (necessari per a les peticions CORS)
+
+2.2 Plugin de Haptics (vibració)
+  - Consulta: https://capacitorjs.com/docs/apis/haptics
+  - Instal·lació: npm install @capacitor/haptics
+  - API usada: Haptics.impact({ style: ImpactStyle.Medium })
+  - Fallback per a navegador web: navigator.vibrate(60)
+
+2.3 Plugin de Preferences (persistència)
+  - Consulta: https://capacitorjs.com/docs/apis/preferences
+  - Instal·lació: npm install @capacitor/preferences
+  - Usat per guardar la configuració de l'usuari (mode visual, estat
+    dels toggles de vibració i llanterna) entre sessions.
+
+2.4 Plugin de Llanterna
+  - Primera aproximació: API estàndard MediaDevices (getUserMedia + torch)
+    → Va fallar al WebView d'Android (veure secció 5).
+  - Solució final: @capgo/capacitor-flash v6
+    Consulta: https://github.com/Cap-go/capacitor-flash
+    Instal·lació: npm install @capgo/capacitor-flash@^6.0.0
+    API usada: CapacitorFlash.switchOn() / CapacitorFlash.switchOff()
+  - Sync amb Android: npx cap sync android
+
+2.5 Flux de treball general Capacitor
+  Cada vegada que es modifica el codi web:
+    npm run build        → genera el dist/ amb Vite
+    npx cap sync android → copia dist/ i actualitza plugins natius
+    npx cap open android → obre Android Studio per compilar i instal·lar
+
+
+────────────────────────────────────────────────────────────────────────────────
+3. PROVES AMB FUNCIONALITATS NATIVES DEL DISPOSITIU
+────────────────────────────────────────────────────────────────────────────────
+
+3.1 Vibració
+  PROVA 1 — Haptics directe (Capacitor):
+    Resultat: Funciona correctament al dispositiu Android.
+    L'impacte "Medium" dona una vibració curta i precisa, adequada
+    per marcar un beat sense ser excessiva.
+
+  PROVA 2 — Fallback navigator.vibrate():
+    Resultat: Funciona al navegador de sobretaula per a proves,
+    però alguns navegadors el bloquejen si no hi ha interacció
+    prèvia de l'usuari (política de seguretat).
+
+3.2 Llanterna
+  PROVA 1 — getUserMedia + constraint { torch: true }:
+    Codi provat:
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      const track = stream.getVideoTracks()[0];
+      const caps = track.getCapabilities();
+      // caps.torch → undefined al WebView d'Android
+    Resultat: FALLIDA. El WebView d'Android no exposa la capacitat
+    "torch" a través de la MediaDevices API estàndard.
+    Error a consola: "[Llanterna] track no disponible (torch no suportat?)"
+
+  PROVA 2 — @capgo/capacitor-flash:
+    Codi provat:
+      const { value } = await CapacitorFlash.isAvailable();
+      await CapacitorFlash.switchOn({ intensity: 1.0 });
+      setTimeout(() => CapacitorFlash.switchOff(), 140);
+    Resultat: ÈXIT. La llanterna s'encén i s'apaga sincronitzada
+    amb cada beat. El plugin usa CameraManager.setTorchMode()
+    de l'API nativa d'Android directament.
+
+3.3 Anàlisi de BPM (Web Audio API)
+  PROVA 1 — createMediaElementSource():
+    L'AudioContext "segrestava" l'element <audio>. Si l'AudioContext
+    estava suspès o les capçaleres CORS d'iTunes no eren compatibles
+    amb Web Audio, l'àudio emmudeia.
+    Resultat: FALLIDA. La música deixava de sonar.
+
+  PROVA 2 — captureStream():
+    Intenta capturar el flux de l'element <audio> per analitzar-lo.
+    Error: SecurityError - Cannot capture from element with cross-origin data.
+    Resultat: FALLIDA. URLs d'iTunes són cross-origin.
+
+  PROVA 3 — fetch() independent + OfflineAudioContext:
+    fetch(url, { mode: 'cors' }) per descarregar l'àudio per separat.
+    Anàlisi offline amb AudioContext.decodeAudioData().
+    L'element <audio> reprodueix nativament sense interferències.
+    Resultat: ÈXIT. Solució definitiva adoptada.
+
+3.4 Sincronització beat / animació
+  PROVA 1 — Detecció d'energia sense filtre:
+    La detecció capturava snare, hi-hat i altres instruments d'alta
+    freqüència com a beats, produint el doble o triple del tempo real.
+    Resultat: FALLIDA. BPM visual no coincidia amb la música.
+
+  PROVA 2 — Filtre IIR passa-baixos (200 Hz) + RMS:
+    Aplicant un filtre que conserva només 0-200 Hz s'aïlla el bombo
+    (kick drum). La detecció d'energia RMS sobre aquesta senyal filtrada
+    produeix un BPM molt més precís.
+    Resultat: ÈXIT. La sincronització beat-animació és correcta.
+
+[ ESPAI PER A CAPTURES DE LES PROVES ]
+
+  ┌───────────────────────┐
+  │                       │
+  │  (inserir captures)   │
+  │                       │
+  └───────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+4. DECISIONS PRESES I APRENENTATGES ADQUIRITS
+────────────────────────────────────────────────────────────────────────────────
+
+4.1 Decisions d'arquitectura
+
+  DECISIÓ: Usar fetch() independent per a l'anàlisi de BPM en lloc
+  d'interceptar l'element <audio>.
+  MOTIU: Les APIs de Web Audio (createMediaElementSource, captureStream)
+  apliquen polítiques de same-origin que bloquegen URLs cross-origin
+  com les d'iTunes. Fer un fetch() independent evita el problema
+  perquè les capçaleres CORS d'iTunes permeten GET directes.
+
+  DECISIÓ: Pre-analitzar el BPM en segon pla quan l'usuari toca
+  una cançó (onTrackClick), abans que premi START.
+  MOTIU: L'anàlisi tarda ~1-2 segons. Fent-la en paral·lel mentre
+  l'usuari navega a la pantalla del visualitzador, quan arriba i prem
+  START la promesa ja és resolta i no hi ha retard perceptible.
+
+  DECISIÓ: Fallback a scheduler manual si l'anàlisi falla.
+  MOTIU: Les URLs d'iTunes poden canviar o tenir restriccions CORS
+  variables. L'app ha de funcionar sempre, fins i tot sense anàlisi
+  automàtica, usant el BPM per defecte de 120.
+
+  DECISIÓ: Usar @capgo/capacitor-flash en lloc de getUserMedia.
+  MOTIU: L'API estàndard no exposa el control de torch al WebView
+  d'Android. El plugin natiu usa CameraManager directament.
+
+4.2 Decisions d'UI/UX
+
+  DECISIÓ: 3 pantalles amb transició d'opacitat (no de desplaçament).
+  MOTIU: Més senzill d'implementar amb CSS pur i evita problemes
+  de scroll indesitjat en pantalles que contenen canvas.
+
+  DECISIÓ: El mode visual s'auto-detecta pel gènere de l'artista.
+  MOTIU: Millora l'experiència d'usuari: l'app suggereix un mode
+  coherent amb la música sense que l'usuari hagi de triar manualment.
+  L'usuari pot canviar-lo manualment al sidebar del visualitzador.
+
+  DECISIÓ: Controls de Vibració i Llanterna a la pantalla 3 directament
+  (no al sidebar), mentre el mode visual va al sidebar.
+  MOTIU: Vibració i Llanterna s'activen/desactiven sovint durant l'ús
+  i han de ser ràpidament accessibles. El mode visual es canvia menys.
+
+4.3 Aprenentatges tècnics
+
+  - El WebView d'Android té restriccions importants respecte als
+    navegadors d'escriptori: algunes APIs web estàndard no funcionen
+    igual o simplement no estan disponibles.
+
+  - La detecció de BPM per energia RMS és molt sensible a la qualitat
+    del filtrat. Sense filtratge, els instruments de percussió aguda
+    generen falsos positius constants.
+
+  - requestAnimationFrame no és prou precís per a sincronització de
+    beat estricta (<25ms de variació). Un "lookahead" de 25ms compensa
+    el lag sense causar beats prematurs perceptibles.
+
+  - Capacitor simplifica enormement el pont web↔natiu, però cal
+    conèixer les limitacions del WebView per a cada funcionalitat
+    nativa i buscar el plugin adequat quan la web API falla.
+
+
+────────────────────────────────────────────────────────────────────────────────
+5. ESBOSSOS, CAPTURES I ITERACIONS DE L'EVOLUCIÓ DEL PROJECTE
+────────────────────────────────────────────────────────────────────────────────
+
+ITERACIÓ 1 — Estructura bàsica de 3 pantalles
+  Pantalla 1: camp de cerca + botó.
+  Pantalla 2: targeta d'artista + configuració manual de BPM.
+  Pantalla 3: canvas p5.js + botó START/STOP.
+
+  [ ESPAI PER A CAPTURES ITERACIÓ 1 ]
+
+  ┌───────────────────────┐
+  │                       │
+  │  (inserir captures)   │
+  │                       │
+  └───────────────────────┘
+
+ITERACIÓ 2 — Integració d'iTunes + mini reproductor
+  Afegida llista de cançons de l'artista (iTunes Search API).
+  Tap a una cançó → s'inicia el preview de 30 segons.
+  Mini reproductor amb barra de progrés a la pantalla 3.
+
+  [ ESPAI PER A CAPTURES ITERACIÓ 2 ]
+
+  ┌───────────────────────┐
+  │                       │
+  │  (inserir captures)   │
+  │                       │
+  └───────────────────────┘
+
+ITERACIÓ 3 — BPM automàtic i sincronització beat
+  Eliminat el control manual de BPM de la pantalla 2.
+  Anàlisi offline de la cançó amb Web Audio API + filtre passa-baixos.
+  Badge "AUTO" al display de BPM quan la detecció és automàtica.
+  requestAnimationFrame loop per disparar beats als timestamps exactes.
+
+  [ ESPAI PER A CAPTURES ITERACIÓ 3 ]
+
+  ┌───────────────────────┐
+  │                       │
+  │  (inserir captures)   │
+  │                       │
+  └───────────────────────┘
+
+ITERACIÓ 4 — Reestructuració UI
+  Controls de mode visual i dispositiu moguts de pantalla 2 a pantalla 3.
+  Sidebar lateral per al mode visual (obre/tanca amb botó al header).
+  Vibració i Llanterna com a botons d'icona directament a la pantalla 3.
+  Disseny de botons amb icones SVG inline.
+
+  [ ESPAI PER A CAPTURES ITERACIÓ 4 ]
+
+  ┌───────────────────────┐
+  │                       │
+  │  (inserir captures)   │
+  │                       │
+  └───────────────────────┘
+
+ITERACIÓ 5 — Llanterna nativa
+  Substituïda la implementació getUserMedia per @capgo/capacitor-flash.
+  Afegits logs de diagnòstic a consola per a vibració i llanterna.
+  Sync amb Android i prova en dispositiu físic.
+
+  [ ESPAI PER A CAPTURES ITERACIÓ 5 ]
+
+  ┌───────────────────────┐
+  │                       │
+  │  (inserir captures)   │
+  │                       │
+  └───────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────
+6. JUSTIFICACIÓ: PROBLEMES TROBATS, SOLUCIONS I CONCLUSIONS
+────────────────────────────────────────────────────────────────────────────────
+
+PROBLEMA 1 — L'àudio emmudeia en connectar Web Audio API
+  Context: createMediaElementSource() "segrestava" l'element <audio>
+  i si l'AudioContext estava suspès o hi havia incompatibilitat CORS,
+  l'àudio deixava de sortir per l'altaveu.
+  Solució: Abandonar completament la intercepció de l'element <audio>.
+  Fer un fetch() independent de l'URL per a l'anàlisi i deixar l'element
+  <audio> reproduir de forma nativa sense cap intervenció de Web Audio.
+  Resultat: Àudio sempre funcional, anàlisi independent i sense CORS.
+
+PROBLEMA 2 — captureStream() bloquejat per CORS
+  Context: Intent d'usar captureStream() per capturar el flux de l'àudio
+  i analitzar-lo en temps real.
+  Error: SecurityError: Cannot capture from element with cross-origin data.
+  Solució: Mateixa que el problema 1. El fetch() independent no sofreix
+  aquesta restricció perquè no intenta "capturar" l'element del DOM.
+
+PROBLEMA 3 — Detecció de beats incorrecta (doble tempo)
+  Context: L'algorisme detectava snare i hi-hat com a beats a més del bombo,
+  resultant en un BPM el doble del real.
+  Solució: Aplicar un filtre IIR passa-baixos de primer ordre (tallada a
+  200 Hz) a la senyal abans de l'anàlisi. Això conserva només el rang del
+  bombo/baix i elimina els instruments d'alta freqüència.
+  Resultat: BPM detectat correcte en la majoria de gèneres musicals.
+
+PROBLEMA 4 — Burst de beats en iniciar
+  Context: Si l'anàlisi es completava mentre l'àudio ja portava uns segons
+  reproduint-se, el loop de beats intentava disparar tots els beats passats
+  a la vegada, causant una ràfega d'efectes visuals.
+  Solució: En iniciar el BeatAnalyser, saltar tots els beatTimes anteriors
+  al currentTime de l'àudio usant findIndex(bt => bt > currentTime).
+  Resultat: El visualitzador s'incorpora al beat actual sense ràfegues.
+
+PROBLEMA 5 — Llanterna no disponible al WebView d'Android
+  Context: L'API estàndard getUserMedia + constraint { torch: true } no
+  exposa la capacitat de torch al WebView d'Android. La llanterna mai
+  s'encenia tot i que el dispositiu la té.
+  Solució: Substituir per el plugin @capgo/capacitor-flash que usa
+  l'API nativa d'Android (CameraManager.setTorchMode()) directament,
+  sense dependre del WebView.
+  Resultat: La llanterna s'encén i s'apaga sincronitzada amb els beats.
+
+CONCLUSIONS GENERALS:
+  BeatPulse ha estat un projecte que ha demostrat tant el potencial com
+  les limitacions del paradigma "web empaquetada com a app nativa".
+
+  Punts forts de l'enfocament:
+    - Desplegament simultani a Android i iOS amb un sol codi base.
+    - Cicle de desenvolupament àgil (modificar HTML/CSS/JS i fer sync).
+    - Accés a APIs web modernes (Web Audio, MediaDevices) quan funcionen.
+
+  Limitacions trobades:
+    - El WebView no és un navegador complet; algunes APIs web no estan
+      disponibles o es comporten diferent.
+    - Cada funcionalitat nativa requereix avaluar si la web API és
+      suficient o cal un plugin Capacitor específic.
+    - Les restriccions CORS d'iOS i Android WebView són més estrictes
+      que en navegadors d'escriptori.
+
+  L'aplicació final compleix els objectius: detecta automàticament el BPM
+  d'una cançó seleccionada, sincronitza el visualitzador de partícules amb
+  el ritme real, i activa la vibració i la llanterna del dispositiu a cada
+  beat, creant una experiència multisensorial genuïna.
+
+
+────────────────────────────────────────────────────────────────────────────────
+7. FONTS UTILITZADES
+────────────────────────────────────────────────────────────────────────────────
+
+DOCUMENTACIÓ OFICIAL
+  [1] Capacitor - Getting Started
+      https://capacitorjs.com/docs/getting-started
+
+  [2] Capacitor - Haptics Plugin
+      https://capacitorjs.com/docs/apis/haptics
+
+  [3] Capacitor - Preferences Plugin
+      https://capacitorjs.com/docs/apis/preferences
+
+  [4] Capacitor - Building your App
+      https://capacitorjs.com/docs/basics/building-your-app
+
+  [5] ViteJS - Getting Started
+      https://vitejs.dev/guide/
+
+  [6] p5.js - Reference
+      https://p5js.org/reference/
+
+APIS EXTERNES
+  [7] TheAudioDB - Artist Search API
+      https://www.theaudiodb.com/api_guide.php
+      Usada per obtenir metadades de l'artista (nom, gènere, país,
+      biografia, imatge).
+
+  [8] iTunes Search API
+      https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/
+      Usada per obtenir llistes de cançons amb previews de 30 segons.
+
+PLUGINS CAPACITOR
+  [9] @capgo/capacitor-flash
+      https://github.com/Cap-go/capacitor-flash
+      Plugin per al control natiu de la llanterna (torch) a Android i iOS.
+
+  [10] @capacitor/haptics (oficial Capacitor)
+       https://capacitorjs.com/docs/apis/haptics
+
+WEB APIs (MDN)
+  [11] Web Audio API - AudioContext, OfflineAudioContext, decodeAudioData
+       https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
+
+  [12] MediaDevices.getUserMedia()
+       https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+
+  [13] Navigator.vibrate()
+       https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
+
+  [14] MediaStreamTrack.applyConstraints() - torch constraint
+       https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/applyConstraints
+
+  [15] requestAnimationFrame
+       https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame
+
+INTEL·LIGÈNCIA ARTIFICIAL
+  [16] Claude (Anthropic) - claude.ai
+       Usat com a assistent de programació per als següents aspectes:
+       - Disseny i implementació de l'algorisme de detecció de BPM
+         offline (filtre IIR passa-baixos, detecció d'energia RMS,
+         threshold adaptatiu, debounce de 300ms).
+       - Diagnosi i solució dels problemes CORS amb Web Audio API.
+       - Implementació de la classe BeatAnalyser amb requestAnimationFrame
+         i lookahead de 25ms per a la sincronització beat-animació.
+       - Reestructuració de la interfície d'usuari (sidebar, botons SVG).
+       - Identificació del plugin @capgo/capacitor-flash com a alternativa
+         a l'API getUserMedia per al control de la llanterna.
+       Totes les decisions d'arquitectura i de disseny van ser revisades
+       i aprovades per l'autor. El codi generat va ser integrat, provat
+       i adaptat al projecte.
+
+ALTRES REFERENCIES
+  [17] Beat Detection Algorithms - Brossier, Paul
+       "Automatic Annotation of Musical Audio for Interactive Applications"
+       Queen Mary, University of London, 2006.
+       Referència conceptual per a la detecció d'energia RMS i threshold
+       adaptatiu en la detecció de beats.
+
+  [18] Stack Overflow - "Web Audio API CORS cross-origin"
+       Discussió sobre les limitacions CORS de Web Audio API amb
+       elements <audio> de fonts externes.
+
+================================================================================
+  Fi del document
+================================================================================

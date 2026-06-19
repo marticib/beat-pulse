@@ -1,45 +1,36 @@
-/* ============================================
-   BeatPulse — Estils principals
-   Tema fosc, estètica musical, mobile-first
-   ============================================ */
+/* BeatPulse 2.0 - Estils en 3 pantalles */
 
 :root {
-  /* Colors de base */
-  --bg:       #0a0a0f;
-  --surface:  #12121c;
-  --surface2: #1a1a28;
-  --border:   rgba(255, 255, 255, 0.07);
-
-  /* Tema Neon (per defecte) */
+  --bg:           #0a0a0f;
+  --surface:      #12121c;
+  --surface2:     #1a1a28;
+  --border:       rgba(255, 255, 255, 0.08);
   --accent:       #c060ff;
-  --accent-dim:   rgba(192, 96, 255, 0.12);
+  --accent-dim:   rgba(192, 96, 255, 0.14);
   --accent-glow:  rgba(192, 96, 255, 0.35);
   --accent-text:  #d480ff;
   --text:         #e5ddf5;
   --text-dim:     rgba(229, 221, 245, 0.45);
 }
 
-/* Tema Foc */
 [data-visual-mode="fire"] {
-  --accent:      #ff6b1a;
-  --accent-dim:  rgba(255, 107, 26, 0.12);
-  --accent-glow: rgba(255, 107, 26, 0.35);
-  --accent-text: #ff8f4d;
-  --text:        #f5e8df;
-  --text-dim:    rgba(245, 232, 223, 0.45);
+  --accent:       #ff6b1a;
+  --accent-dim:   rgba(255, 107, 26, 0.14);
+  --accent-glow:  rgba(255, 107, 26, 0.35);
+  --accent-text:  #ff8f4d;
+  --text:         #f5e8df;
+  --text-dim:     rgba(245, 232, 223, 0.45);
 }
 
-/* Tema Minimal */
 [data-visual-mode="minimal"] {
-  --accent:      #7ab8d4;
-  --accent-dim:  rgba(122, 184, 212, 0.10);
-  --accent-glow: rgba(122, 184, 212, 0.25);
-  --accent-text: #a0cfe0;
-  --text:        #d0dde4;
-  --text-dim:    rgba(208, 221, 228, 0.45);
+  --accent:       #7ab8d4;
+  --accent-dim:   rgba(122, 184, 212, 0.12);
+  --accent-glow:  rgba(122, 184, 212, 0.25);
+  --accent-text:  #a0cfe0;
+  --text:         #d0dde4;
+  --text-dim:     rgba(208, 221, 228, 0.45);
 }
 
-/* ---- Reset ---- */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -50,69 +41,671 @@
 html, body {
   width: 100%;
   height: 100%;
-  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;
   touch-action: manipulation;
+  overflow: hidden;
 }
 
-/* ---- Layout principal ---- */
 #app {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  height: 100vh;
+}
+
+/* ============================================================
+   PANTALLES - cada pantalla ocupa tot el viewport
+   ============================================================ */
+
+.screen {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  height: 100vh; /* fallback */
-  overflow: hidden;
+  background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* ---- Capçalera ---- */
-.header {
+.screen--active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Capçalera fixa de pantalla 2 i 3 */
+.screen-topbar,
+.viz-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 14px 20px 10px;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
   flex-shrink: 0;
 }
 
-.app-title {
-  font-size: 24px;
+.topbar-title {
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+
+.topbar-spacer {
+  width: 40px;
+}
+
+/* Cos scrollable de les pantalles 1 i 2 */
+.screen-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 24px 20px;
+}
+
+/* Centrat vertical per a la pantalla 1 (cerca) */
+.screen-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+}
+
+/* Peu fix per al botó Iniciar */
+.screen-footer {
+  flex-shrink: 0;
+  padding: 12px 24px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+/* ============================================================
+   PANTALLA 1 - CERCA
+   ============================================================ */
+
+.app-title {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 3px;
   text-transform: uppercase;
   color: var(--text);
+  text-align: center;
+  line-height: 1;
 }
 
 .title-accent {
   color: var(--accent-text);
-  text-shadow: 0 0 20px var(--accent-glow);
+  text-shadow: 0 0 30px var(--accent-glow);
 }
 
-.settings-btn {
+.app-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 8px 0 40px;
+}
+
+.search-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.block-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.field-lg {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  font-size: 17px;
+  padding: 16px 18px;
+  outline: none;
+  width: 100%;
+  -webkit-appearance: none;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+  transition: border-color 0.2s;
+}
+
+.field-lg:focus {
+  border-color: var(--accent);
+}
+
+.field-lg::placeholder {
+  color: var(--text-dim);
+}
+
+.search-status {
+  font-size: 13px;
+  color: var(--text-dim);
+  min-height: 18px;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+.search-status.error   { color: #ff6b6b; }
+.search-status.loading { color: var(--accent-text); }
+
+/* ============================================================
+   BOTÓ PRINCIPAL
+   ============================================================ */
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent-dim);
+  border: 1.5px solid var(--accent);
+  border-radius: 16px;
+  color: var(--accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 15px 24px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 0 18px var(--accent-glow);
+  text-transform: uppercase;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+  background: var(--accent-glow);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ============================================================
+   BOTÓ D'ICONA (back)
+   ============================================================ */
+
+.icon-btn {
   background: var(--accent-dim);
   border: 1px solid var(--border);
   border-radius: 50%;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.icon-btn:active {
+  background: var(--accent-glow);
+  transform: scale(0.9);
+}
+
+/* ============================================================
+   PANTALLA 2 - ARTISTA + CONFIGURACIÓ
+   ============================================================ */
+
+/* Fila de l'artista: imatge + nom + genere */
+.artist-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+
+.artist-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.artist-thumb.hidden {
+  display: none;
+}
+
+.artist-text {
+  flex: 1;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.artist-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  background: var(--surface2);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 3px 9px;
+}
+
+.pill:empty {
+  display: none;
+}
+
+.artist-bio {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 18px 0;
+}
+
+/* Fila de configuració horitzontal */
+.cfg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Bloc de configuració vertical */
+.cfg-col {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cfg-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cfg-label-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Badge "Auto: Fire" */
+.auto-badge {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent-text);
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.auto-badge.hidden {
+  display: none;
+}
+
+/* BPM stepper: − [120] + */
+.bpm-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-btn {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--accent-text);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s, transform 0.15s;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.step-btn:active {
+  background: var(--accent-dim);
+  transform: scale(0.88);
+}
+
+.bpm-num {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
   color: var(--accent-text);
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  width: 78px;
+  padding: 7px 8px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.bpm-num:focus {
+  border-color: var(--accent);
+}
+
+/* Radio buttons per al mode visual */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radio-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.radio-opt input[type="radio"] {
+  display: none;
+}
+
+.radio-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+
+.radio-btn span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.radio-opt input:checked + .radio-btn {
+  border-color: var(--accent);
+}
+
+.radio-opt input:checked + .radio-btn span {
+  background: var(--accent);
+}
+
+/* Checkboxes */
+.checks-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.check-opt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.check-real {
+  display: none;
+}
+
+.check-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--text-dim);
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.15s;
+}
+
+.check-real:checked + .check-box {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.check-real:checked + .check-box::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid var(--accent-text);
+  border-bottom: 2px solid var(--accent-text);
+  transform: rotate(-45deg);
+}
+
+/* ============================================================
+   LLISTA DE CANÇONS (iTunes)
+   ============================================================ */
+
+.tracks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.tracks-loading,
+.tracks-error {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 16px 0;
+}
+
+.tracks-error { color: #ff6b6b; }
+
+.track-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.track-item:active {
+  background: var(--accent-dim);
+  border-radius: 10px;
+  padding-left: 8px;
+}
+
+.track-item--playing .track-play-btn {
+  color: var(--accent-text);
+}
+
+.track-art {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface2);
   flex-shrink: 0;
 }
 
-.settings-btn:active {
-  background: var(--accent-glow);
-  transform: scale(0.92);
+.track-text {
+  flex: 1;
+  min-width: 0;
 }
 
-/* ---- Canvas ---- */
+.track-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-album {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-play-icon {
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+/* ============================================================
+   MINI REPRODUCTOR
+   ============================================================ */
+
+.mini-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.mini-player.hidden {
+  display: none;
+}
+
+.player-art {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.player-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-track-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+
+.player-progress-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.player-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.5s linear;
+}
+
+
+/* ============================================================
+   PANTALLA 3 - VISUALITZADOR
+   ============================================================ */
+
+.viz-header {
+  background: transparent;
+  padding: 14px 16px 10px;
+}
+
+.viz-bpm-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.viz-bpm-num {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bpm-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
 #canvas-container {
   flex: 1;
   min-height: 0;
@@ -126,155 +719,135 @@ html, body {
   height: 100% !important;
 }
 
-/* ---- Secció BPM ---- */
-.bpm-section {
-  padding: 10px 24px 6px;
-  flex-shrink: 0;
+/* Backdrop semitransparent quan el sidebar és obert */
+.viz-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 10;
 }
 
-.bpm-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  margin-bottom: 10px;
+.viz-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.bpm-btn {
-  background: var(--accent-dim);
-  border: 1.5px solid var(--border);
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  font-size: 28px;
-  font-weight: 300;
-  color: var(--accent-text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  transition: all 0.15s;
-}
-
-.bpm-btn:active {
-  background: var(--accent-glow);
-  transform: scale(0.91);
-}
-
-.bpm-value {
-  text-align: center;
-  min-width: 110px;
-}
-
-#bpm-number {
-  display: block;
-  font-size: 60px;
-  font-weight: 900;
-  color: var(--accent-text);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  transition: text-shadow 0.3s;
-}
-
-.bpm-number--running {
-  text-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow);
-  animation: bpm-glow 0.5s ease-out;
-}
-
-@keyframes bpm-glow {
-  0%   { text-shadow: 0 0 60px var(--accent), 0 0 100px var(--accent-glow); }
-  100% { text-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow); }
-}
-
-.bpm-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 5px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  margin-top: 3px;
-}
-
-.bpm-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--accent-dim);
-  outline: none;
-  cursor: pointer;
-  border: none;
-}
-
-.bpm-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent-text);
-  box-shadow: 0 0 12px var(--accent-glow);
-  cursor: pointer;
-  border: 2px solid var(--bg);
-  transition: box-shadow 0.2s;
-}
-
-.bpm-slider:active::-webkit-slider-thumb {
-  box-shadow: 0 0 20px var(--accent);
-}
-
-/* ---- Selector de mode ---- */
-.mode-section {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 8px 20px 10px;
-  flex-shrink: 0;
-}
-
-.mode-btn {
+/* Sidebar: llisca des de la dreta */
+.viz-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(260px, 78vw);
   background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 16px;
-  width: 64px;
-  height: 52px;
-  font-size: 23px;
-  cursor: pointer;
-  transition: all 0.2s;
+  border-left: 1px solid var(--border);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 24px;
+  padding: 70px 16px 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 11;
 }
 
-.mode-btn.active {
+.viz-sidebar.open {
+  transform: translateX(0);
+}
+
+/* Etiqueta de secció dins del sidebar */
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Fila de botons dins del sidebar */
+.viz-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Cada botó: icona dalt + text baix */
+.viz-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  padding: 10px 6px;
+  border-radius: 14px;
+  background: var(--surface2);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-dim);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.viz-btn input {
+  display: none;
+}
+
+.viz-btn:has(input:checked) {
   background: var(--accent-dim);
   border-color: var(--accent);
-  box-shadow: 0 0 14px var(--accent-glow), inset 0 0 8px var(--accent-dim);
+  color: var(--accent-text);
 }
 
-.mode-btn:active {
-  transform: scale(0.91);
+/* Botó de sidebar actiu amb tap feedback */
+.viz-btn:active {
+  transform: scale(0.94);
 }
 
-/* ---- Botó Start/Stop ---- */
+/* Fila de vibració/llanterna directament a la pantalla 3 */
+.viz-device-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.viz-footer {
+  flex-shrink: 0;
+  padding: 14px 24px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Botó START / STOP */
 .start-stop-btn {
   display: block;
-  margin: 0 20px 16px;
-  height: 62px;
+  width: 100%;
+  height: 64px;
   border: 2px solid var(--accent);
   border-radius: 20px;
   background: var(--accent-dim);
   color: var(--accent-text);
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: 5px;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  text-transform: uppercase;
   cursor: pointer;
   transition: all 0.2s;
-  flex-shrink: 0;
-  box-shadow: 0 0 18px var(--accent-glow);
+  box-shadow: 0 0 20px var(--accent-glow);
 }
 
 .start-stop-btn.running {
@@ -286,242 +859,23 @@ html, body {
 
 @keyframes btn-pulse {
   0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
-  50%       { box-shadow: 0 0 45px var(--accent-glow), 0 0 70px var(--accent-dim); }
+  50%       { box-shadow: 0 0 50px var(--accent-glow), 0 0 80px var(--accent-dim); }
 }
 
 .start-stop-btn:active {
   transform: scale(0.97);
 }
 
-/* ---- Panell de configuració (bottom sheet) ---- */
-.settings-panel {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
-}
+/* ============================================================
+   RESPONSIVE: màxim ample en tablets
+   ============================================================ */
 
-.settings-panel.hidden {
-  display: none;
-}
-
-.settings-content {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 28px 28px 0 0;
-  padding: 16px 24px 32px;
-  width: 100%;
-  max-height: 88dvh;
-  max-height: 88vh; /* fallback */
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.settings-handle {
-  width: 36px;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  margin: 0 auto 20px;
-}
-
-.settings-content h2 {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-.setting-group {
-  margin-bottom: 22px;
-}
-
-.setting-group > label,
-.setting-group > span.toggle-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 10px;
-}
-
-.setting-value {
-  color: var(--accent-text);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Toggle row (label + switch) */
-.toggle-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.toggle-row .toggle-label {
-  margin-bottom: 0;
-}
-
-/* Switch toggle */
-.toggle {
-  position: relative;
-  width: 54px;
-  height: 30px;
-  flex-shrink: 0;
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.toggle-slider {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1.5px solid var(--border);
-  border-radius: 15px;
-  cursor: pointer;
-  transition: background 0.3s, border-color 0.3s;
-}
-
-.toggle-slider::before {
-  content: '';
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #ccc;
-  border-radius: 50%;
-  transition: transform 0.3s, background 0.3s;
-}
-
-.toggle input:checked + .toggle-slider {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-}
-
-.toggle input:checked + .toggle-slider::before {
-  transform: translate(24px, -50%);
-  background: var(--accent-text);
-  box-shadow: 0 0 8px var(--accent-glow);
-}
-
-/* Select personalitzat */
-.select-wrapper {
-  position: relative;
-}
-
-.select-wrapper .select-arrow {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--accent-text);
-  pointer-events: none;
-  font-size: 14px;
-}
-
-.settings-content select {
-  width: 100%;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-  color: var(--text);
-  font-size: 15px;
-  padding: 13px 40px 13px 16px;
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
-  cursor: pointer;
-}
-
-.settings-content select:focus {
-  border-color: var(--accent);
-}
-
-.settings-content input[type="number"] {
-  width: 100%;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-  color: var(--text);
-  font-size: 22px;
-  font-weight: 700;
-  text-align: center;
-  padding: 10px;
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
-  font-variant-numeric: tabular-nums;
-}
-
-.settings-content input[type="number"]:focus {
-  border-color: var(--accent);
-}
-
-.settings-content input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--accent-dim);
-  cursor: pointer;
-  border: none;
-}
-
-.settings-content input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--accent-text);
-  box-shadow: 0 0 10px var(--accent-glow);
-  cursor: pointer;
-  border: 2px solid var(--surface);
-}
-
-.settings-close-btn {
-  width: 100%;
-  margin-top: 6px;
-  padding: 16px;
-  background: var(--accent-dim);
-  border: 1.5px solid var(--accent);
-  border-radius: 18px;
-  color: var(--accent-text);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.settings-close-btn:active {
-  background: var(--accent-glow);
-  transform: scale(0.98);
-}
-
-/* ---- Pantalles grans (tablet+) ---- */
 @media (min-width: 540px) {
-  #app {
+  .screen {
     max-width: 420px;
-    margin: 0 auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
   }

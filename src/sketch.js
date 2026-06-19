@@ -2,12 +2,13 @@
 // Faig servir p5.js en mode instancia per no contaminar el scope global.
 //
 // Des de main.js es pot cridar:
-//   triggerBeat()          - dispara una pulsacio visual
-//   setVisualMode(mode)    - canvia el tema: 'neon', 'fire' o 'minimal'
-//   setActive(bool)        - indica si el metronom esta en marxa
-//   setBpm(value)          - actualitza el BPM intern
-//   setParticleIntensity() - quantes particules surten per beat
-//   destroy()              - elimina la instancia de p5
+//   triggerBeat()            - dispara una pulsacio visual
+//   setVisualMode(mode)      - canvia el tema: 'neon', 'fire' o 'minimal'
+//   setActive(bool)          - indica si el metronom esta en marxa
+//   setBpm(value)            - actualitza el BPM intern
+//   setParticleIntensity()   - quantes particules surten per beat
+//   setArtistName(name)      - mostra el nom de l'artista al canvas
+//   destroy()                - elimina la instancia de p5
 
 import p5 from 'p5';
 
@@ -28,6 +29,7 @@ export function createSketch(container) {
     bpm:               120,
     pulseScale:        1.0,
     beatCount:         0,
+    artistName:        '',   // nom de l'artista actual, buit si no n'hi ha
   };
 
   const particles = [];
@@ -38,7 +40,7 @@ export function createSketch(container) {
     p.setup = () => {
       // Faig servir les dimensions del contenidor, amb fallback per si no esta renderitzat
       const w = container.offsetWidth  || window.innerWidth;
-      const h = container.offsetHeight || Math.floor(window.innerHeight * 0.45);
+      const h = container.offsetHeight || Math.floor(window.innerHeight * 0.38);
       const cnv = p.createCanvas(w, h);
       cnv.parent(container);
       p.colorMode(p.HSB, 360, 100, 100, 100);
@@ -68,11 +70,14 @@ export function createSketch(container) {
       drawWaves(p, theme);
       drawParticles(p, theme);
       drawCenter(p, cx, cy, theme);
+
+      // Si hi ha un artista, mostro el seu nom com a text subtil al canvas
+      if (state.artistName) drawArtistLabel(p, cx, cy, theme);
     };
 
     p.windowResized = () => {
       const w = container.offsetWidth  || window.innerWidth;
-      const h = container.offsetHeight || Math.floor(window.innerHeight * 0.45);
+      const h = container.offsetHeight || Math.floor(window.innerHeight * 0.38);
       p.resizeCanvas(w, h);
     };
 
@@ -192,9 +197,29 @@ export function createSketch(container) {
       p.fill(0, 0, 100, act ? 60 : 20);
       p.ellipse(cx, cy, sz * 0.12);
     }
+
+    // Dibuixa el nom de l'artista com a text subtil per sota del cercle central
+    function drawArtistLabel(p, cx, cy, theme) {
+      const base  = p.min(p.width, p.height);
+      const textY = cy + base * 0.19;
+      const sz    = base * 0.036;
+
+      p.noStroke();
+      p.textAlign(p.CENTER, p.TOP);
+      p.textSize(sz);
+      p.fill(theme.h, theme.s * 0.55, theme.b, state.isActive ? 45 : 30);
+
+      // Tallo el nom si es massa llarg per al canvas
+      const maxChars = Math.floor(p.width / (sz * 0.62));
+      const label = state.artistName.length > maxChars
+        ? state.artistName.substring(0, maxChars - 1) + '...'
+        : state.artistName;
+
+      p.text(label.toUpperCase(), cx, textY);
+    }
   };
 
-  // Creo la instancia en mode instancia (la fungo com a argument, no s'executa globalment)
+  // Creo la instancia en mode instancia (no s'executa globalment)
   const p5Instance = new p5(sketch);
 
   // API publica que exposo a main.js
@@ -220,6 +245,10 @@ export function createSketch(container) {
     },
     setParticleIntensity(value) {
       state.particleIntensity = Math.max(1, Math.min(10, value));
+    },
+    // Estableix el nom de l'artista que es mostrara al canvas
+    setArtistName(name) {
+      state.artistName = name || '';
     },
     destroy() {
       p5Instance.remove();

@@ -6,12 +6,15 @@ PODS:
     - Capacitor
   - CapacitorPreferences (6.0.4):
     - Capacitor
+  - CapgoCapacitorFlash (6.0.7):
+    - Capacitor
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
   - "CapacitorPreferences (from `../../node_modules/@capacitor/preferences`)"
+  - "CapgoCapacitorFlash (from `../../node_modules/@capgo/capacitor-flash`)"
 
 EXTERNAL SOURCES:
   Capacitor:
@@ -22,13 +25,16 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/haptics"
   CapacitorPreferences:
     :path: "../../node_modules/@capacitor/preferences"
+  CapgoCapacitorFlash:
+    :path: "../../node_modules/@capgo/capacitor-flash"
 
 SPEC CHECKSUMS:
   Capacitor: c95400d761e376be9da6be5a05f226c0e865cebf
   CapacitorCordova: 8d93e14982f440181be7304aa9559ca631d77fff
   CapacitorHaptics: 40f83026feeee9cfe36e89e9c98a3baaaf20c450
   CapacitorPreferences: 5848e0691b36b4bb4acc98e481ab56d451578d30
+  CapgoCapacitorFlash: a142c10bbe9af0b4e09cdce8d766f9f5ddd6a2e5
 
-PODFILE CHECKSUM: 8c4b47d8c87491a5f9a237a56b947b1f334525fc
+PODFILE CHECKSUM: 914d7d64fd3513d096b700e8e8c6e74baff7c813
 
 COCOAPODS: 1.16.2

@@ -10,10 +10,11 @@
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
-    "@capacitor/ios": "^6.0.0",
     "@capacitor/core": "^6.0.0",
     "@capacitor/haptics": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
     "@capacitor/preferences": "^6.0.0",
+    "@capgo/capacitor-flash": "^6.0.7",
     "p5": "^1.9.4"
   },
   "devDependencies": {
